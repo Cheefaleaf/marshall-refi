@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marshall Refi — Payment &amp; Cost Visualizer</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeecea;
+  --text: #1a1a18; --text2: #5a5a56; --text3: #8a8a84;
+  --border: rgba(0,0,0,0.09); --border2: rgba(0,0,0,0.2);
+  --green: #1a7a4a; --green-bg: #eaf3de; --green-border: #3b6d11;
+  --red: #a32d2d; --red-bg: #fcebeb; --red-border: #e24b4a;
+  --amber: #854f0b; --blue-border: #185fa5;
+  --radius: 14px; --radius-sm: 9px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a; --bg2: #252523; --bg3: #2a2a27;
+    --text: #f0efe8; --text2: #a0a09a; --text3: #6a6a64;
+    --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.2);
+    --green: #5ab87a; --green-bg: #173404; --green-border: #639922;
+    --red: #e07070; --red-bg: #501313; --red-border: #a32d2d;
+    --amber: #ef9f27; --blue-border: #378add;
+  }
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg3); color: var(--text);
+  min-height: 100vh; padding: 28px 16px 56px;
+}
+.container { max-width: 560px; margin: 0 auto; }
+header { margin-bottom: 24px; }
+header h1 { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+header p { font-size: 14px; color: var(--text2); }
+.card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 10px; }
+.card.surface { background: var(--bg2); }
+.section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+.rate-big { font-size: 54px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 8px; letter-spacing: -2px; }
+.rate-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.pill { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 20px; border: 0.5px solid; display: inline-block; }
+.pill.cost    { background: var(--red-bg);   color: var(--red);   border-color: var(--red-border); }
+.pill.credit  { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+.pill.neutral { background: var(--bg2);      color: var(--text2); border-color: var(--border2); }
+.pill-note { font-size: 12px; color: var(--text3); }
+input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--bg3); border-radius: 2px; outline: none; cursor: pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--text); border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--border2); cursor: pointer; }
+input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--text); border: 3px solid var(--bg); cursor: pointer; }
+.slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-top: 7px; }
+.hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.hero-box { background: var(--bg); border: 1.5px solid var(--blue-border); border-radius: var(--radius); padding: 18px 20px; }
+.hero-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+.hero-num { font-size: 34px; font-weight: 600; line-height: 1; color: var(--text); letter-spacing: -0.5px; }
+.hero-num.green { color: var(--green); }
+.hero-num.red   { color: var(--red); }
+.hero-sub { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.4; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.stat-box { background: var(--bg2); border-radius: var(--radius-sm); padding: 10px 12px; }
+.stat-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; }
+.stat-val { font-size: 15px; font-weight: 600; color: var(--text); }
+.stat-val.green { color: var(--green); }
+.stat-val.red   { color: var(--red); }
+.stat-val.amber { color: var(--amber); }
+.bar-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+.bar-track { height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease, background-color 0.3s ease; }
+.note { font-size: 11px; color: var(--text3); line-height: 1.6; margin-top: 10px; }
+.fee-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--text2); padding: 4px 0; border-bottom: 0.5px solid var(--border); }
+.fee-row:last-child { border-bottom: none; }
+.fee-row.section-head { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); padding-top: 10px; border-bottom: none; }
+.fee-row.total { font-size: 14px; font-weight: 600; color: var(--text); padding-top: 10px; margin-top: 2px; border-top: 0.5px solid var(--border2); border-bottom: none; }
+.fv { font-weight: 500; color: var(--text); }
+.fv.green { color: var(--green); }
+.fv.red   { color: var(--red); }
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 4px 0 14px; }
+.cur-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+.cur-box { background: var(--bg2); border-radius: var(--radius-sm); padding: 9px 11px; }
+.cur-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+.cur-val { font-size: 13px; font-weight: 500; color: var(--text2); }
+footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 28px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Refi Scenario</h1>
+    <p>Marshall · 1918 Plantation Dr, Round Rock TX</p>
+  </header>
+
+  <div class="card">
+    <div class="section-label">New rate</div>
+    <div class="rate-big" id="rate-display">5.125%</div>
+    <div class="rate-meta">
+      <span class="pill" id="points-pill">—</span>
+      <span class="pill-note" id="points-meta">—</span>
+    </div>
+    <input type="range" id="rate-slider" min="4.625" max="6.5" step="0.125" value="5.125">
+    <div class="slider-labels">
+      <span>4.625%</span>
+      <span>← costs pts · par ~5.5% · earns credit →</span>
+      <span>6.5%</span>
+    </div>
+  </div>
+
+  <div class="hero-grid">
+    <div class="hero-box">
+      <div class="hero-label">Total monthly payment</div>
+      <div class="hero-num green" id="new-total">—</div>
+      <div class="hero-sub" id="new-pi-sub">—</div>
+    </div>
+    <div class="hero-box">
+      <div class="hero-label" id="cash-label">Cash to close</div>
+      <div class="hero-num" id="ctc-hero">—</div>
+      <div class="hero-sub" id="ctc-sub">—</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box"><div class="stat-label">Monthly savings</div><div class="stat-val" id="monthly-savings">—</div></div>
+    <div class="stat-box"><div class="stat-label">Break-even</div><div class="stat-val" id="breakeven-stat">—</div></div>
+    <div class="stat-box"><div class="stat-label">5-yr net savings</div><div class="stat-val" id="five-yr-savings">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="bar-header">
+      <span id="bar-left">Break-even within 36 months</span>
+      <span id="bar-right">—</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="payback-bar" style="width:0%"></div></div>
+    <p class="note" id="summary-note">—</p>
+  </div>
+
+  <div class="card surface">
+    <div class="section-label">Closing cost detail</div>
+    <div class="fee-row section-head"><span>Origination (fixed)</span></div>
+    <div class="fee-row"><span>Originator compensation (1.25%)</span><span class="fv">$10,409.38</span></div>
+    <div class="fee-row"><span>Underwriting fee</span><span class="fv">$1,120.00</span></div>
+    <div class="fee-row section-head"><span>Other fixed fees</span></div>
+    <div class="fee-row"><span>Credit report</span><span class="fv">$291.50</span></div>
+    <div class="fee-row"><span>TX attorney fee</span><span class="fv">$125.00</span></div>
+    <div class="fee-row"><span>Title — lender's insurance</span><span class="fv">$2,700.00</span></div>
+    <div class="fee-row"><span>Title — settlement agent</span><span class="fv">$525.00</span></div>
+    <div class="fee-row"><span>Recording fees</span><span class="fv">$175.00</span></div>
+    <div class="fee-row"><span>Initial escrow (ins + taxes)</span><span class="fv">$9,144.00</span></div>
+    <div class="fee-row section-head"><span>Variable</span></div>
+    <div class="fee-row"><span>Prepaid interest (7 days)</span><span class="fv">$829.86</span></div>
+    <div class="fee-row"><span id="fd-points-label">Points / credit</span><span class="fv" id="fd-points-val">—</span></div>
+    <div class="fee-row section-head"><span>Proceeds</span></div>
+    <div class="fee-row"><span>Loan amount</span><span class="fv">$832,750</span></div>
+    <div class="fee-row"><span>Less payoff (UWM)</span><span class="fv">($ 806,500)</span></div>
+    <div class="fee-row"><span>Net proceeds</span><span class="fv">$26,250</span></div>
+    <div class="fee-row total">
+      <span id="ctc-footer-label">Cash to close</span>
+      <span class="fv" id="ctc-footer-val">—</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label" style="margin-bottom:8px;">Current loan (reference)</div>
+  <div class="cur-grid">
+    <div class="cur-box"><div class="cur-label">Total payment</div><div class="cur-val" id="cur-total">—</div></div>
+    <div class="cur-box"><div class="cur-label">P&amp;I</div><div class="cur-val" id="cur-pi">—</div></div>
+    <div class="cur-box"><div class="cur-label">Rate</div><div class="cur-val">7.125%</div></div>
+    <div class="cur-box"><div class="cur-label">Payoff</div><div class="cur-val">$806,500</div></div>
+  </div>
+
+  <footer>
+    Prepared by James Schell<br>
+    Figures are estimates · subject to final closing disclosure
+  </footer>
+
+</div>
+<script>
+const rateSheet = {
+  4.625: 2.387, 4.750: 1.963, 4.875: 1.575,
+  5.000: 1.198, 5.125: 0.849, 5.250: 0.508,
+  5.375: 0.194, 5.500: -0.108, 5.625: -0.387,
+  5.750: -0.638, 5.875: -0.828, 6.000: -1.019,
+  6.125: -1.208, 6.250: -1.387, 6.375: -1.542,
+  6.500: -1.672
+};
+
+const BALANCE      = 832750;
+const CUR_RATE     = 7.125;
+const CUR_TERM_MOS = 29 * 12;
+const ESCROW       = 1841;
+const NEW_TERM_MOS = 30 * 12;
+const BASE_POINTS  = 0.849;
+const BASE_CTC     = 7831.79;
+
+function pmt(rate, n, pv) {
+  const r = rate / 100 / 12;
+  return pv * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1);
+}
+function fmt(n) { return '$' + Math.abs(Math.round(n)).toLocaleString(); }
+
+function update() {
+  const newRate = parseFloat(document.getElementById('rate-slider').value);
+  document.getElementById('rate-display').textContent = newRate.toFixed(3) + '%';
+
+  const rateKeys  = Object.keys(rateSheet).map(Number);
+  const nearest   = rateKeys.reduce((a,b) => Math.abs(b-newRate) < Math.abs(a-newRate) ? b : a);
+  const newPoints = rateSheet[nearest];
+  const ptsDollars = Math.abs(newPoints) / 100 * BALANCE;
+  const isCost    = newPoints > 0;
+  const isCredit  = newPoints < 0;
+
+  const pill = document.getElementById('points-pill');
+  const meta = document.getElementById('points-meta');
+  if (isCost) {
+    pill.textContent = '+' + Math.abs(newPoints).toFixed(3) + ' pts — cost';
+    pill.className   = 'pill cost';
+    meta.textContent = fmt(ptsDollars) + ' added to closing';
+  } else if (isCredit) {
+    pill.textContent = Math.abs(newPoints).toFixed(3) + ' pts — lender credit';
+    pill.className   = 'pill credit';
+    meta.textContent = fmt(ptsDollars) + ' offsets closing costs';
+  } else {
+    pill.textContent = 'par';
+    pill.className   = 'pill neutral';
+    meta.textContent = '';
+  }
+
+  // CTC anchored to known baseline, only points delta changes it
+  const pointsDelta = (newPoints - BASE_POINTS) / 100 * BALANCE;
+  const ctc         = BASE_CTC + pointsDelta;
+  const cashOut     = ctc < 0;
+  const absCtc      = Math.abs(ctc);
+
+  // Points line in detail
+  const fdLabel = document.getElementById('fd-points-label');
+  const fdVal   = document.getElementById('fd-points-val');
+  if (isCost) {
+    fdLabel.textContent = 'Discount points (' + Math.abs(newPoints).toFixed(3) + '%)';
+    fdVal.textContent   = '+' + fmt(ptsDollars);
+    fdVal.className     = 'fv red';
+  } else if (isCredit) {
+    fdLabel.textContent = 'Lender credit (' + Math.abs(newPoints).toFixed(3) + '%)';
+    fdVal.textContent   = '−' + fmt(ptsDollars);
+    fdVal.className     = 'fv green';
+  } else {
+    fdLabel.textContent = 'Points / credit';
+    fdVal.textContent   = '$0';
+    fdVal.className     = 'fv';
+  }
+
+  document.getElementById('ctc-footer-label').textContent = cashOut ? 'Cash back at closing' : 'Cash to close';
+  const cfv = document.getElementById('ctc-footer-val');
+  cfv.textContent = (cashOut ? '−' : '') + fmt(absCtc);
+  cfv.className   = 'fv' + (cashOut ? ' green' : absCtc > 12000 ? ' red' : '');
+
+  const cashLabel = document.getElementById('cash-label');
+  const ctcHero   = document.getElementById('ctc-hero');
+  const ctcSub    = document.getElementById('ctc-sub');
+  if (cashOut) {
+    cashLabel.textContent = 'Cash back at closing';
+    ctcHero.textContent   = fmt(absCtc);
+    ctcHero.className     = 'hero-num green';
+    ctcSub.textContent    = 'Credit exceeds all closing costs';
+  } else {
+    cashLabel.textContent = 'Cash to close';
+    ctcHero.textContent   = fmt(absCtc);
+    ctcHero.className     = 'hero-num' + (absCtc > 12000 ? ' red' : '');
+    ctcSub.textContent    = isCost
+      ? 'Includes ' + fmt(ptsDollars) + ' in points'
+      : isCredit ? fmt(ptsDollars) + ' credit applied'
+      : 'No points adjustment';
+  }
+
+  const curPI    = pmt(CUR_RATE, CUR_TERM_MOS, BALANCE);
+  const curTotal = curPI + ESCROW;
+  const newPI    = pmt(newRate, NEW_TERM_MOS, BALANCE);
+  const newTotal = newPI + ESCROW;
+  const savings  = curTotal - newTotal;
+
+  document.getElementById('new-total').textContent  = fmt(newTotal);
+  document.getElementById('new-pi-sub').textContent = 'P&I ' + fmt(newPI) + ' · Escrow ' + fmt(ESCROW);
+
+  const savEl = document.getElementById('monthly-savings');
+  savEl.textContent = (savings >= 0 ? '+' : '') + fmt(savings);
+  savEl.className   = 'stat-val' + (savings >= 100 ? ' green' : savings <= -100 ? ' red' : ' amber');
+
+  const effectiveOOP = cashOut ? 0 : absCtc;
+  const breakeven    = savings > 0 && effectiveOOP > 0 ? effectiveOOP / savings : savings > 0 ? 0 : Infinity;
+  const beMos        = breakeven === 0 ? 0 : Math.ceil(breakeven);
+
+  document.getElementById('breakeven-stat').textContent = savings > 0
+    ? (beMos === 0 ? 'immediate' : beMos + ' mos') : '—';
+
+  const fiveYrNet = savings > 0 ? savings * 60 - (cashOut ? -absCtc : absCtc) : 0;
+  const fyEl = document.getElementById('five-yr-savings');
+  fyEl.textContent = savings > 0 ? '+' + fmt(Math.max(0, fiveYrNet)) : '—';
+  fyEl.className   = 'stat-val' + (savings > 0 ? ' green' : '');
+
+  const barLeft  = document.getElementById('bar-left');
+  const barRight = document.getElementById('bar-right');
+  const bar      = document.getElementById('payback-bar');
+  if (cashOut && savings > 0) {
+    barLeft.textContent       = 'Cash back + monthly savings — day 1 positive';
+    barRight.textContent      = 'immediate';
+    bar.style.width           = '100%';
+    bar.style.backgroundColor = '#639922';
+  } else if (savings > 0 && breakeven > 0) {
+    const pct = Math.min(100, (36 / breakeven) * 100);
+    barLeft.textContent       = 'Break-even within 36 months';
+    barRight.textContent      = beMos + ' of 36 mos';
+    bar.style.width           = pct.toFixed(1) + '%';
+    bar.style.backgroundColor = pct >= 70 ? '#639922' : pct >= 40 ? '#ba7517' : '#a32d2d';
+  } else {
+    barLeft.textContent       = 'Break-even within 36 months';
+    barRight.textContent      = savings <= 0 ? 'no savings at this rate' : '—';
+    bar.style.width           = '0%';
+    bar.style.backgroundColor = '#a32d2d';
+  }
+
+  let note = '';
+  if (savings <= 0) {
+    note = `At ${newRate.toFixed(3)}%, the new payment is higher than current — no savings scenario.`;
+  } else if (cashOut) {
+    note = `Best case — lender credit covers all costs and puts ${fmt(absCtc)} back at closing, plus ${fmt(savings)}/mo in savings. 5-year net: +${fmt(Math.max(0,fiveYrNet))}.`;
+  } else if (beMos <= 18) {
+    note = `Strong scenario. Cash to close recovered in ${beMos} months, then ${fmt(savings)}/mo in pure savings. 5-year net: +${fmt(Math.max(0,fiveYrNet))}.`;
+  } else if (beMos <= 30) {
+    note = `Solid scenario. Break-even at ${beMos} months — makes sense with a 3+ year horizon. 5-year net: +${fmt(Math.max(0,fiveYrNet))}.`;
+  } else {
+    note = `Longer payback at ${beMos} months. The ${fmt(savings)}/mo in savings still adds up significantly over time.`;
+  }
+  document.getElementById('summary-note').textContent = note;
+
+  document.getElementById('cur-total').textContent = fmt(curTotal);
+  document.getElementById('cur-pi').textContent    = fmt(curPI);
+}
+
+document.getElementById('rate-slider').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>

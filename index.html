@@ -37,7 +37,9 @@ header p { font-size: 14px; color: var(--text2); }
 .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 10px; }
 .card.surface { background: var(--bg2); }
 .section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
-.rate-big { font-size: 54px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 8px; letter-spacing: -2px; }
+.rate-big { font-size: 54px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 4px; letter-spacing: -2px; }
+.rate-apr { font-size: 13px; color: var(--text3); margin-bottom: 10px; }
+.rate-apr span { color: var(--text2); font-weight: 500; }
 .rate-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .pill { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 20px; border: 0.5px solid; display: inline-block; }
 .pill.cost    { background: var(--red-bg);   color: var(--red);   border-color: var(--red-border); }
@@ -78,7 +80,8 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .cur-box { background: var(--bg2); border-radius: var(--radius-sm); padding: 9px 11px; }
 .cur-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
 .cur-val { font-size: 13px; font-weight: 500; color: var(--text2); }
-footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 28px; line-height: 1.7; }
+footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 28px; line-height: 1.9; }
+footer a { color: var(--text3); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -92,6 +95,7 @@ footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2
   <div class="card">
     <div class="section-label">New rate</div>
     <div class="rate-big" id="rate-display">5.125%</div>
+    <div class="rate-apr">APR <span id="apr-display">—</span></div>
     <div class="rate-meta">
       <span class="pill" id="points-pill">—</span>
       <span class="pill-note" id="points-meta">—</span>
@@ -149,7 +153,7 @@ footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2
     <div class="fee-row"><span id="fd-points-label">Points / credit</span><span class="fv" id="fd-points-val">—</span></div>
     <div class="fee-row section-head"><span>Proceeds</span></div>
     <div class="fee-row"><span>Loan amount</span><span class="fv">$832,750</span></div>
-    <div class="fee-row"><span>Less payoff (UWM)</span><span class="fv">($ 806,500)</span></div>
+    <div class="fee-row"><span>Less payoff (UWM)</span><span class="fv">($806,500)</span></div>
     <div class="fee-row"><span>Net proceeds</span><span class="fv">$26,250</span></div>
     <div class="fee-row total">
       <span id="ctc-footer-label">Cash to close</span>
@@ -168,45 +172,86 @@ footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2
   </div>
 
   <footer>
-    Prepared by James Schell<br>
+    Prepared by James Schell · NMLS# 1482668<br>
+    <a href="tel:5124681207">(512) 468-1207</a><br>
     Figures are estimates · subject to final closing disclosure
   </footer>
 
 </div>
 <script>
-const rateSheet = {
-  4.625: 2.387, 4.750: 1.963, 4.875: 1.575,
-  5.000: 1.198, 5.125: 0.849, 5.250: 0.508,
-  5.375: 0.194, 5.500: -0.108, 5.625: -0.387,
-  5.750: -0.638, 5.875: -0.828, 6.000: -1.019,
-  6.125: -1.208, 6.250: -1.387, 6.375: -1.542,
-  6.500: -1.672
-};
+const rateSheet = [
+  [4.625,  2.387],
+  [4.750,  1.963],
+  [4.875,  1.575],
+  [5.000,  1.198],
+  [5.125,  0.849],
+  [5.250,  0.508],
+  [5.375,  0.194],
+  [5.500, -0.108],
+  [5.625, -0.387],
+  [5.750, -0.638],
+  [5.875, -0.828],
+  [6.000, -1.019],
+  [6.125, -1.208],
+  [6.250, -1.387],
+  [6.375, -1.542],
+  [6.500, -1.672]
+];
 
-const BALANCE      = 832750;
-const CUR_RATE     = 7.125;
-const CUR_TERM_MOS = 29 * 12;
-const ESCROW       = 1841;
-const NEW_TERM_MOS = 30 * 12;
-const BASE_POINTS  = 0.849;
-const BASE_CTC     = 7831.79;
+const BALANCE        = 832750;
+const CUR_RATE       = 7.125;
+const CUR_TERM_MOS   = 29 * 12;
+const ESCROW         = 1841;
+const NEW_TERM_MOS   = 360;
+const BASE_POINTS    = 0.849;
+const BASE_CTC       = 7831.79;
+const FIXED_APR_FEES = 10409.38 + 1120 + 291.50 + 125;
 
 function pmt(rate, n, pv) {
   const r = rate / 100 / 12;
   return pv * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1);
 }
+
+function calcAPR(noteRate, aprFees) {
+  const mp  = pmt(noteRate, NEW_TERM_MOS, BALANCE);
+  const net = BALANCE - aprFees;
+  let lo = noteRate, hi = noteRate * 3;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const r   = mid / 100 / 12;
+    const pv  = mp * (1 - Math.pow(1+r, -NEW_TERM_MOS)) / r;
+    if (pv > net) lo = mid; else hi = mid;
+  }
+  return Math.max(noteRate, (lo + hi) / 2);
+}
+
+function getAPR(noteRate, points) {
+  const isCost  = points > 0;
+  const aprFees = isCost
+    ? FIXED_APR_FEES + (points / 100 * BALANCE)
+    : FIXED_APR_FEES;
+  return calcAPR(noteRate, aprFees);
+}
+
 function fmt(n) { return '$' + Math.abs(Math.round(n)).toLocaleString(); }
 
+function findNearest(rate) {
+  return rateSheet.reduce((a, b) =>
+    Math.abs(b[0] - rate) < Math.abs(a[0] - rate) ? b : a
+  );
+}
+
 function update() {
-  const newRate = parseFloat(document.getElementById('rate-slider').value);
+  const newRate  = parseFloat(document.getElementById('rate-slider').value);
   document.getElementById('rate-display').textContent = newRate.toFixed(3) + '%';
 
-  const rateKeys  = Object.keys(rateSheet).map(Number);
-  const nearest   = rateKeys.reduce((a,b) => Math.abs(b-newRate) < Math.abs(a-newRate) ? b : a);
-  const newPoints = rateSheet[nearest];
+  const [, newPoints] = findNearest(newRate);
+  const apr = getAPR(newRate, newPoints);
+  document.getElementById('apr-display').textContent = apr.toFixed(3) + '%';
+
   const ptsDollars = Math.abs(newPoints) / 100 * BALANCE;
-  const isCost    = newPoints > 0;
-  const isCredit  = newPoints < 0;
+  const isCost     = newPoints > 0;
+  const isCredit   = newPoints < 0;
 
   const pill = document.getElementById('points-pill');
   const meta = document.getElementById('points-meta');
@@ -224,13 +269,11 @@ function update() {
     meta.textContent = '';
   }
 
-  // CTC anchored to known baseline, only points delta changes it
   const pointsDelta = (newPoints - BASE_POINTS) / 100 * BALANCE;
   const ctc         = BASE_CTC + pointsDelta;
   const cashOut     = ctc < 0;
   const absCtc      = Math.abs(ctc);
 
-  // Points line in detail
   const fdLabel = document.getElementById('fd-points-label');
   const fdVal   = document.getElementById('fd-points-val');
   if (isCost) {
